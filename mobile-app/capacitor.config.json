@@ -1,7 +1,7 @@
 {
   "appId": "com.jjlfmedia.sismoalerta",
   "appName": "SismoAlerta América",
-  "webDir": "src",
+  "webDir": "dist",
   "server": {
     "androidScheme": "https",
     "url": "https://sismicalert.vercel.app/app/index.html",

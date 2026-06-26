@@ -5,7 +5,7 @@
   "main": "src/js/app.js",
   "scripts": {
     "build": "npm run copy && npx cap sync android",
-    "copy": "mkdir -p dist && cp -r src/* dist/",
+    "copy": "node copy-dist.js",
     "dev": "npx http-server src -p 3001",
     "android:build": "npx cap build android",
     "android:open": "npx cap open android",
