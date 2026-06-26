@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0f1e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SismoAlerta America</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+  <!-- Splash Screen -->
+  <div id="splash-screen" class="splash-screen">
+    <div class="splash-content">
+      <div class="splash-logo">
+        <svg class="seismic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 12h3l3-9 4 18 4-18 3 9h3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="pulse-ring"></div>
+      </div>
+      <h1>Sismo<span>Alerta</span></h1>
+      <p>America</p>
+      <div class="splash-loader"></div>
+    </div>
+  </div>
+
+  <!-- Permission Request Modal -->
+  <div id="permission-modal" class="permission-modal hidden">
+    <div class="permission-content">
+      <div class="permission-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>
+      <h2>Permisos Necesarios</h2>
+      <p id="permission-text">Para alertarte sobre sismos cercanos, necesitamos acceso a tu ubicacion.</p>
+      <div class="permission-list">
+        <div class="permission-item" id="perm-location">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span>Ubicacion GPS</span>
+          <span class="perm-status pending">Pendiente</span>
+        </div>
+        <div class="permission-item" id="perm-notification">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span>Notificaciones</span>
+          <span class="perm-status pending">Pendiente</span>
+        </div>
+        <div class="permission-item" id="perm-audio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <span>Control de Audio</span>
+          <span class="perm-status pending">Pendiente</span>
+        </div>
+      </div>
+      <button id="btn-grant-permissions" class="btn-primary">Conceder Permisos</button>
+      <p class="permission-note">Tu ubicacion nunca se almacena. Solo se usa para calcular distancia a sismos.</p>
+    </div>
+  </div>
+
+  <!-- Full Screen Alert Overlay -->
+  <div id="alert-overlay" class="alert-overlay hidden">
+    <div class="alert-content">
+      <div class="alert-pulse"></div>
+      <div class="alert-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <h1 id="alert-title">ALERTA SISMICA</h1>
+      <div id="alert-magnitude" class="alert-magnitude">M 7.2</div>
+      <p id="alert-message" class="alert-message"></p>
+      <div id="alert-details" class="alert-details"></div>
+      <div class="alert-instructions">
+        <p class="instruction-title">PROTEGETE AHORA:</p>
+        <ul>
+          <li>Cubrete bajo una mesa resistente</li>
+          <li>Alejate de ventanas y objetos que puedan caer</li>
+          <li>No uses ascensores</li>
+          <li>Si estas afuera, alejate de edificios</li>
+        </ul>
+      </div>
+      <button id="alert-dismiss" class="alert-dismiss-btn">ENTENDIDO</button>
+    </div>
+    <div id="test-banner" class="test-banner hidden">
+      SIMULACION - NO HAY SISMO REAL
+    </div>
+  </div>
+
+  <!-- Tsunami Alert Overlay -->
+  <div id="tsunami-overlay" class="tsunami-overlay hidden">
+    <div class="tsunami-content">
+      <div class="tsunami-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M2 12c.6.5 1.2 1 2.5 1C7 13 7 11 9.5 11c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+          <path d="M2 17c.6.5 1.2 1 2.5 1C7 18 7 16 9.5 16c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+          <path d="M2 7c.6.5 1.2 1 2.5 1C7 8 7 6 9.5 6c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+        </svg>
+      </div>
+      <h1>ALERTA DE TSUNAMI</h1>
+      <div id="tsunami-level" class="tsunami-level">EVACUACION INMEDIATA</div>
+      <p id="tsunami-message" class="tsunami-message"></p>
+      <div class="tsunami-instructions">
+        <p class="instruction-title">ACCIONES INMEDIATAS:</p>
+        <ul>
+          <li>Alejate de la costa AHORA</li>
+          <li>Busca terreno elevado (30+ metros)</li>
+          <li>No regreses hasta que las autoridades lo indiquen</li>
+          <li>Evita rios y estuarios</li>
+        </ul>
+      </div>
+      <button id="tsunami-dismiss" class="tsunami-dismiss-btn">ENTENDIDO</button>
+    </div>
+  </div>
+
+  <!-- Are You OK Modal -->
+  <div id="are-you-ok-modal" class="are-you-ok-modal hidden">
+    <div class="ayu-content">
+      <div class="ayu-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <h2>VERIFICACION POST-SISMO</h2>
+      <p id="ayu-time-text">Han pasado 8 minutos desde el sismo de magnitud <span id="ayu-magnitude">6.5</span> cerca de tu zona.</p>
+      <h3>Te encuentras bien?</h3>
+      <p class="ayu-explanation">
+        Si respondes "Estoy bien", tu ubicacion dejara de ser monitoreada.<br>
+        Si no respondes en 3 minutos, activaremos el Modo Rescate.
+      </p>
+      <div class="ayu-buttons">
+        <button id="btn-im-ok" class="ayu-btn ok">ESTOY BIEN</button>
+        <button id="btn-need-help" class="ayu-btn help">NECESITO AYUDA</button>
+        <button id="btn-more-time" class="ayu-btn time">Dame mas tiempo</button>
+      </div>
+      <div id="ayu-countdown" class="ayu-countdown"></div>
+    </div>
+    <div id="ayu-test-banner" class="test-banner hidden">
+      SIMULACION - NO HAY SISMO REAL
+    </div>
+  </div>
+
+  <!-- Main App Container -->
+  <div id="app" class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M2 12h3l3-9 4 18 4-18 3 9h3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Sismo<span class="accent">Alerta</span></span>
+      </div>
+      <div id="connection-status" class="connection-status online">
+        <span class="status-dot"></span>
+        <span class="status-text">Conectado</span>
+      </div>
+    </header>
+
+    <!-- Tab Content -->
+    <main id="tab-content" class="tab-content">
+      <!-- Dashboard Tab -->
+      <section id="tab-dashboard" class="tab-panel active">
+        <div class="dashboard-hero">
+          <div class="risk-indicator" id="risk-indicator">
+            <div class="risk-circle green">
+              <span class="risk-level">BAJO</span>
+            </div>
+            <p class="risk-text">Nivel de riesgo actual</p>
+          </div>
+          <div class="location-info" id="location-info">
+            <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <span id="user-location">Detectando ubicacion...</span>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+              Actividad Reciente
+            </h3>
+            <span id="last-update" class="last-update">Actualizando...</span>
+          </div>
+          <div id="recent-quakes" class="quakes-list">
+            <div class="loading-placeholder">
+              <div class="loader"></div>
+              <p>Cargando datos sismicos...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-header">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              Estadisticas 24h
+            </h3>
+          </div>
+          <div id="stats-grid" class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-value" id="stat-total">--</span>
+              <span class="stat-label">Total sismos</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="stat-major">--</span>
+              <span class="stat-label">M 5.0+</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="stat-nearby">--</span>
+              <span class="stat-label">Cerca de ti</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="stat-max">--</span>
+              <span class="stat-label">Maxima mag.</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="test-mode-btn" class="test-mode-shortcut">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Probar el Sistema
+        </button>
+      </section>
+
+      <!-- Map Tab -->
+      <section id="tab-map" class="tab-panel">
+        <div id="map-container" class="map-container">
+          <div id="map" class="map"></div>
+          <div class="map-controls">
+            <button id="map-locate" class="map-btn" title="Mi ubicacion">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 2v4m0 12v4m10-10h-4M6 12H2"/>
+              </svg>
+            </button>
+            <button id="map-refresh" class="map-btn" title="Actualizar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+              </svg>
+            </button>
+            <button id="map-simulate" class="map-btn simulate" title="Simular sismo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="10 8 16 12 10 16 10 8"/>
+              </svg>
+            </button>
+          </div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="dot red"></span> M 6+</span>
+            <span class="legend-item"><span class="dot orange"></span> M 5-5.9</span>
+            <span class="legend-item"><span class="dot yellow"></span> M 4-4.9</span>
+            <span class="legend-item"><span class="dot green"></span> M &lt;4</span>
+          </div>
+          <div id="map-filter" class="map-filter">
+            <select id="map-period">
+              <option value="day">Ultimas 24h</option>
+              <option value="week">Ultimos 7 dias</option>
+              <option value="month">Ultimos 30 dias</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alerts Tab -->
+      <section id="tab-alerts" class="tab-panel">
+        <div class="page-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            Historial de Alertas
+          </h2>
+        </div>
+        <div id="alerts-filter" class="alerts-filter">
+          <button class="filter-btn active" data-filter="all">Todas</button>
+          <button class="filter-btn" data-filter="red">Rojas</button>
+          <button class="filter-btn" data-filter="orange">Naranjas</button>
+          <button class="filter-btn" data-filter="yellow">Amarillas</button>
+          <button class="filter-btn" data-filter="tsunami">Tsunami</button>
+        </div>
+        <div id="alerts-list" class="alerts-list">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <p>No hay alertas registradas</p>
+            <small>Las alertas apareceran aqui cuando se detecten sismos</small>
+          </div>
+        </div>
+      </section>
+
+      <!-- Rescue Tab -->
+      <section id="tab-rescue" class="tab-panel">
+        <div class="page-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Ayuda / Rescate
+          </h2>
+        </div>
+        <div id="rescue-inactive" class="rescue-inactive">
+          <div class="rescue-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <h3>No hay alertas activas en tu zona</h3>
+          <p>Esta seccion se activa automaticamente durante emergencias sismicas (M 6.0+).</p>
+          <div class="rescue-info">
+            <h4>Que es el Modo Rescate?</h4>
+            <ul>
+              <li>Se activa 8 minutos despues de un sismo mayor</li>
+              <li>Te pregunta si estas bien</li>
+              <li>Si no respondes, comparte tu ubicacion anonimamente</li>
+              <li>Ayuda a equipos de rescate a localizarte</li>
+              <li>Maximo 5 horas de monitoreo</li>
+            </ul>
+          </div>
+        </div>
+        <div id="rescue-active" class="rescue-active hidden">
+          <div class="rescue-status">
+            <span class="rescue-status-icon pulsing">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </span>
+            <h3>Modo Rescate Activo</h3>
+            <p id="rescue-time-remaining">Tiempo restante: 4h 52m</p>
+          </div>
+          <div id="rescue-map-container" class="rescue-map-container">
+            <div id="rescue-map" class="rescue-map"></div>
+          </div>
+          <div class="rescue-controls">
+            <button id="btn-im-safe" class="rescue-btn safe">YA ESTOY A SALVO</button>
+            <button id="btn-share-location" class="rescue-btn share">COMPARTIR UBICACION</button>
+          </div>
+          <div class="emergency-numbers">
+            <h4>Numeros de Emergencia</h4>
+            <div id="emergency-number" class="emergency-number">
+              <span class="country-flag" id="country-flag">MX</span>
+              <span class="country-name">Mexico</span>
+              <a href="tel:911" class="phone-number">911</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Guide Tab -->
+      <section id="tab-guide" class="tab-panel">
+        <div class="page-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Que Hacer
+          </h2>
+        </div>
+        <div class="guide-tabs">
+          <button class="guide-tab active" data-guide="before">Antes</button>
+          <button class="guide-tab" data-guide="during">Durante</button>
+          <button class="guide-tab" data-guide="after">Despues</button>
+        </div>
+        
+        <div id="guide-before" class="guide-content active">
+          <h3>Antes de un Sismo</h3>
+          <div class="guide-list">
+            <div class="guide-item">
+              <span class="guide-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Identifica zonas seguras</strong>
+                <p>Bajo mesas resistentes, junto a columnas, lejos de ventanas</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Prepara un kit de emergencia</strong>
+                <p>Agua, alimentos no perecederos, linterna, radio, botiquin</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Establece puntos de reunion</strong>
+                <p>Acuerda con tu familia donde encontrarse si se separan</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Asegura objetos pesados</strong>
+                <p>Libreros, cuadros, televisores que puedan caer</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="guide-during" class="guide-content">
+          <h3>Durante un Sismo</h3>
+          <div class="guide-list">
+            <div class="guide-item urgent">
+              <span class="guide-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+                </svg>
+              </span>
+              <div>
+                <strong>AGACHATE, CUBRETE, AGARRATE</strong>
+                <p>La tecnica mas importante para sobrevivir</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>
+              </span>
+              <div>
+                <strong>NO uses ascensores</strong>
+                <p>Podrias quedar atrapado</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="3" y1="9" x2="21" y2="9"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Alejate de ventanas</strong>
+                <p>El vidrio puede romperse y causar heridas</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="guide-after" class="guide-content">
+          <h3>Despues de un Sismo</h3>
+          <div class="guide-list">
+            <div class="guide-item">
+              <span class="guide-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Revisa tu entorno</strong>
+                <p>Busca danos estructurales, fugas de gas, cables caidos</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Cierra llaves de gas</strong>
+                <p>Para prevenir incendios o explosiones</p>
+              </div>
+            </div>
+            <div class="guide-item">
+              <span class="guide-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </span>
+              <div>
+                <strong>Preparate para replicas</strong>
+                <p>Pueden ser tan fuertes como el sismo principal</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Tab -->
+      <section id="tab-settings" class="tab-panel">
+        <div class="page-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            Ajustes
+          </h2>
+        </div>
+        
+        <div class="settings-group">
+          <h4>Alertas</h4>
+          <div class="setting-item">
+            <label>Magnitud minima para alertar</label>
+            <div class="setting-control">
+              <input type="range" id="setting-min-mag" min="2" max="7" step="0.5" value="4">
+              <span id="min-mag-value">4.0</span>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>Radio de distancia (km)</label>
+            <div class="setting-control">
+              <input type="range" id="setting-radius" min="50" max="1000" step="50" value="300">
+              <span id="radius-value">300 km</span>
+            </div>
+          </div>
+          <div class="setting-item">
+            <label>Volumen de alarma</label>
+            <div class="setting-control">
+              <input type="range" id="setting-volume" min="0" max="100" step="10" value="100">
+              <span id="volume-value">100%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4>Sonido y Vibracion</h4>
+          <div class="setting-item toggle">
+            <label>Sonar aunque este en silencio</label>
+            <input type="checkbox" id="setting-override-silence" checked>
+          </div>
+          <div class="setting-item toggle">
+            <label>Flash en alertas rojas/naranjas</label>
+            <input type="checkbox" id="setting-flash" checked>
+          </div>
+          <div class="setting-item toggle">
+            <label>Alertas de tsunami</label>
+            <input type="checkbox" id="setting-tsunami" checked>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4>Pruebas Programadas</h4>
+          <div class="setting-item toggle">
+            <label>Activar prueba automatica</label>
+            <input type="checkbox" id="setting-scheduled-test">
+          </div>
+          <div class="setting-item" id="scheduled-time-container">
+            <label>Hora de prueba diaria</label>
+            <input type="time" id="setting-test-time" value="09:00">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4>Ubicacion</h4>
+          <div class="setting-item">
+            <label>Pais de residencia</label>
+            <select id="setting-country">
+              <option value="auto">Detectar automaticamente</option>
+              <option value="MX">Mexico</option>
+              <option value="US">Estados Unidos</option>
+              <option value="VE">Venezuela</option>
+              <option value="CO">Colombia</option>
+              <option value="CL">Chile</option>
+              <option value="AR">Argentina</option>
+              <option value="PE">Peru</option>
+              <option value="EC">Ecuador</option>
+              <option value="GT">Guatemala</option>
+              <option value="CR">Costa Rica</option>
+              <option value="PA">Panama</option>
+              <option value="BR">Brasil</option>
+              <option value="CA">Canada</option>
+              <option value="PR">Puerto Rico</option>
+              <option value="DO">Republica Dominicana</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4>Deteccion</h4>
+          <div class="setting-item toggle">
+            <label>Deteccion por acelerometro</label>
+            <input type="checkbox" id="setting-accelerometer" checked>
+          </div>
+          <div class="setting-item toggle">
+            <label>Modo Rescate automatico</label>
+            <input type="checkbox" id="setting-auto-rescue" checked>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4>Sistema</h4>
+          <div class="setting-item toggle">
+            <label>Iniciar con el telefono</label>
+            <input type="checkbox" id="setting-boot-start" checked>
+          </div>
+          <div class="setting-item toggle">
+            <label>Modo ahorro de bateria</label>
+            <input type="checkbox" id="setting-battery-saver">
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <h4>Prueba del Sistema</h4>
+          <button id="btn-test-mode" class="btn-primary full-width">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            Ir al Modo de Prueba
+          </button>
+          <p class="setting-hint">Simula alertas para conocer como funciona la app antes de una emergencia real.</p>
+        </div>
+
+        <div class="settings-group">
+          <h4>Informacion</h4>
+          <div class="about-info">
+            <p><strong>SismoAlerta America</strong></p>
+            <p>Version 1.0.0</p>
+            <p>Desarrollado por JJLF Media</p>
+            <p>jjlfmedia@gmail.com</p>
+            <p>Buctzotz, Yucatan, Mexico</p>
+            <p class="about-legal">
+              Proyecto 100% gratuito, sin anuncios, sin suscripciones.
+              <br>Tu seguridad no tiene precio.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Test Mode Tab -->
+      <section id="tab-test" class="tab-panel">
+        <div class="page-header">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+            Prueba del Sistema
+          </h2>
+          <button id="btn-close-test" class="btn-close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="test-intro">
+          <p>Simula una alerta sismica para conocer como funciona la app antes de que ocurra una emergencia real.</p>
+          <div class="test-warning">
+            ADVERTENCIA: Esta es una PRUEBA. No hay ningun sismo real.
+          </div>
+        </div>
+
+        <div class="test-options">
+          <h4>Selecciona el nivel a probar:</h4>
+          
+          <button class="test-btn red" id="test-red">
+            <span class="test-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+            </span>
+            <div class="test-info">
+              <strong>Probar Alerta ROJA</strong>
+              <small>Alerta completa, flash, volumen maximo</small>
+            </div>
+          </button>
+          
+          <button class="test-btn orange" id="test-orange">
+            <span class="test-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+            </span>
+            <div class="test-info">
+              <strong>Probar Alerta NARANJA</strong>
+              <small>Alerta alta, flash 5 destellos</small>
+            </div>
+          </button>
+          
+          <button class="test-btn yellow" id="test-yellow">
+            <span class="test-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+              </svg>
+            </span>
+            <div class="test-info">
+              <strong>Probar Alerta AMARILLA</strong>
+              <small>Aviso moderado, sin flash</small>
+            </div>
+          </button>
+
+          <button class="test-btn tsunami" id="test-tsunami">
+            <span class="test-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 12c.6.5 1.2 1 2.5 1C7 13 7 11 9.5 11c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+                <path d="M2 17c.6.5 1.2 1 2.5 1C7 18 7 16 9.5 16c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+              </svg>
+            </span>
+            <div class="test-info">
+              <strong>Probar Alerta TSUNAMI</strong>
+              <small>Alerta de evacuacion costera</small>
+            </div>
+          </button>
+          
+          <button class="test-btn rescue" id="test-rescue">
+            <span class="test-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </span>
+            <div class="test-info">
+              <strong>Probar "Estas Bien?"</strong>
+              <small>Simulacion de verificacion post-sismo</small>
+            </div>
+          </button>
+
+          <button class="test-btn simulate-map" id="test-map-simulation">
+            <span class="test-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <circle cx="12" cy="12" r="8"/>
+              </svg>
+            </span>
+            <div class="test-info">
+              <strong>Simular Sismo en Mapa</strong>
+              <small>Ver ondas sismicas expandiendose</small>
+            </div>
+          </button>
+        </div>
+
+        <p class="test-note">
+          La prueba dura maximo 15 segundos y puedes cancelarla en cualquier momento.
+        </p>
+      </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-item" data-tab="map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+          <line x1="8" y1="2" x2="8" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="22"/>
+        </svg>
+        <span class="nav-label">Mapa</span>
+      </button>
+      <button class="nav-item" data-tab="alerts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="nav-label">Alertas</span>
+      </button>
+      <button class="nav-item" data-tab="rescue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span class="nav-label">Rescate</span>
+      </button>
+      <button class="nav-item" data-tab="guide">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        <span class="nav-label">Guia</span>
+      </button>
+      <button class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span class="nav-label">Ajustes</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

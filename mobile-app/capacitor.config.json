@@ -1,0 +1,25 @@
+{
+  "appId": "com.jjlfmedia.sismoalerta",
+  "appName": "SismoAlerta América",
+  "webDir": "src",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*"
+    ]
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_seismic",
+      "iconColor": "#e63946",
+      "sound": "alert_sound.wav"
+    },
+    "Geolocation": {
+      "enableHighAccuracy": true
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0a0f1e"
+  }
+}

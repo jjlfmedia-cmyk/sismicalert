@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SismoAlerta América</string>
+    <string name="title_activity_main">SismoAlerta América</string>
+    <string name="package_name">com.jjlfmedia.sismoalerta</string>
+    <string name="custom_url_scheme">com.jjlfmedia.sismoalerta</string>
+</resources>
