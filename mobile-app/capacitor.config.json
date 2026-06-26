@@ -4,9 +4,9 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "url": "https://sismicalert.vercel.app/app/index.html",
+    "url": "https://alert-kappa-henna.vercel.app/app/index.html",
     "allowNavigation": [
-      "sismicalert.vercel.app"
+      "alert-kappa-henna.vercel.app"
     ]
   },
   "plugins": {
