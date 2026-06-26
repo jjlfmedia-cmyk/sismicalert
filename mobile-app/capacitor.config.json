@@ -4,8 +4,9 @@
   "webDir": "src",
   "server": {
     "androidScheme": "https",
+    "url": "https://sismicalert.vercel.app/app/index.html",
     "allowNavigation": [
-      "*"
+      "sismicalert.vercel.app"
     ]
   },
   "plugins": {
