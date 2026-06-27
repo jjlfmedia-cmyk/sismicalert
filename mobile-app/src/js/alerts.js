@@ -155,60 +155,6 @@ async function playAlertSoundMaxVolume(level) {
     alertAudio.loop = (level === 'red' || level === 'tsunami');
     await alertAudio.play().catch(e => console.warn('Audio play failed:', e));
     console.log(`Playing ${level} alert sound: ${src}`);
-    return;
-    }
-    
-    // Create oscillator for alert sound
-    const oscillator = audioContext.createOscillator();
-    const gainNodeLocal = audioContext.createGain();
-    
-    oscillator.connect(gainNodeLocal);
-    gainNodeLocal.connect(audioContext.destination);
-    
-    // Set volume to maximum
-    gainNodeLocal.gain.value = 1.0;
-    
-    if (level === 'red' || level === 'tsunami') {
-      // Urgent alarm pattern - loud alternating tones
-      oscillator.type = 'square';
-      oscillator.frequency.value = 880; // A5
-      
-      // Create alternating frequency pattern
-      const now = audioContext.currentTime;
-      for (let i = 0; i < 30; i++) {
-        oscillator.frequency.setValueAtTime(880, now + i * 0.5);
-        oscillator.frequency.setValueAtTime(660, now + i * 0.5 + 0.25);
-      }
-      
-      oscillator.start();
-      alertAudio = oscillator;
-      
-    } else if (level === 'orange') {
-      // Warning tone
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 660;
-      
-      // Pulsing pattern
-      const now = audioContext.currentTime;
-      for (let i = 0; i < 20; i++) {
-        gainNodeLocal.gain.setValueAtTime(0.8, now + i * 0.8);
-        gainNodeLocal.gain.setValueAtTime(0, now + i * 0.8 + 0.6);
-      }
-      
-      oscillator.start();
-      alertAudio = oscillator;
-      
-    } else {
-      // Simple notification tone
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 523; // C5
-      gainNodeLocal.gain.value = 0.5;
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 1);
-    }
-    
-    console.log(`Playing ${level} alert sound at maximum volume`);
-    
   } catch (e) {
     console.error('Error playing alert sound:', e);
   }
