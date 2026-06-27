@@ -13,6 +13,7 @@ let Haptics = null;
 let LocalNotifications = null;
 let Torch = null;
 let Device = null;
+let Geolocation = null;
 
 // Audio context for maximum volume
 let audioContext = null;
@@ -35,6 +36,10 @@ export async function initAlertPlugins() {
       LocalNotifications = modules[1].LocalNotifications;
       Torch = modules[2].Torch;
       Device = modules[3].Device;
+      
+      // Dynamic import for geolocation to keep sync platform clean
+      const geoModule = await import('@capacitor/geolocation');
+      Geolocation = geoModule.Geolocation;
       
       // Request notification permissions
       const result = await LocalNotifications.requestPermissions();
@@ -69,19 +74,27 @@ export async function requestAllPermissions() {
   const results = {
     location: false,
     notification: false,
-    audio: true // Web Audio API doesn't need permission
+    audio: true
   };
   
-  // Request location permission
-  if (navigator.geolocation) {
+  // Request native GPS permission explicitly via Capacitor Geolocation
+  if (Geolocation) {
+    try {
+      const status = await Geolocation.requestPermissions();
+      results.location = status.location === 'granted';
+      updatePermissionUI('perm-location', results.location);
+    } catch (e) {
+      console.warn('Native location permission error:', e);
+      updatePermissionUI('perm-location', false);
+    }
+  } else if (navigator.geolocation) {
     try {
       await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
       });
       results.location = true;
       updatePermissionUI('perm-location', true);
     } catch (e) {
-      console.warn('Location permission denied:', e);
       updatePermissionUI('perm-location', false);
     }
   }
@@ -94,14 +107,6 @@ export async function requestAllPermissions() {
       updatePermissionUI('perm-notification', results.notification);
     } catch (e) {
       console.warn('Notification permission error:', e);
-      updatePermissionUI('perm-notification', false);
-    }
-  } else if ('Notification' in window) {
-    try {
-      const perm = await Notification.requestPermission();
-      results.notification = perm === 'granted';
-      updatePermissionUI('perm-notification', results.notification);
-    } catch (e) {
       updatePermissionUI('perm-notification', false);
     }
   }
@@ -140,6 +145,15 @@ function initAudioContext() {
 async function playAlertSoundMaxVolume(level) {
   try {
     stopAlertSound();
+    
+    // Invocar el helper nativo para forzar volumen e ignorar silencio en Android
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      try {
+        await window.Capacitor.Plugins.NativeAudioHelper.forceMaxVolume();
+      } catch (err) {
+        console.warn('Native override silence error:', err);
+      }
+    }
     
     // Map levels to actual WAV files
     const soundMap = {
@@ -355,6 +369,13 @@ export async function showAlert(level, data, isTest = false) {
   
   testBanner.classList.toggle('hidden', !isTest);
   overlay.classList.remove('hidden');
+  
+  // Despertar la pantalla de bloqueo nativamente en Android
+  if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+    try {
+      await window.Capacitor.Plugins.NativeAudioHelper.acquireWakeLock();
+    } catch(err) {}
+  }
   
   // Trigger all alert effects
   const settings = Storage.get('settings', {});
