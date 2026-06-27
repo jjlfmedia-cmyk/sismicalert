@@ -18,8 +18,13 @@ export default function HeroSection() {
     // Record download
     fetch("/api/downloads", { method: "POST" }).catch(() => {});
     setShowModal(false);
-    // In production, this would trigger an actual APK download
-    alert("La aplicación APK estará disponible próximamente. ¡Gracias por tu interés!");
+    // Trigger real APK download
+    const link = document.createElement("a");
+    link.href = "/SismoAlerta-America.apk";
+    link.download = "SismoAlerta-America.apk";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
