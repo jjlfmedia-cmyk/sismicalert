@@ -135,19 +135,27 @@ function initAudioContext() {
 }
 
 /**
- * Play alert sound at maximum volume
+ * Play alert sound at maximum volume using real WAV files
  */
 async function playAlertSoundMaxVolume(level) {
   try {
-    // Stop any existing audio
     stopAlertSound();
     
-    // Initialize audio context
-    initAudioContext();
+    // Map levels to actual WAV files
+    const soundMap = {
+      'red': 'assets/alert_red.wav',
+      'orange': 'assets/alert_orange.wav',
+      'yellow': 'assets/alert_yellow.wav',
+      'tsunami': 'assets/alert_tsunami.wav'
+    };
     
-    // Resume audio context (required for mobile)
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
+    const src = soundMap[level] || soundMap['yellow'];
+    alertAudio = new Audio(src);
+    alertAudio.volume = 1.0;
+    alertAudio.loop = (level === 'red' || level === 'tsunami');
+    await alertAudio.play().catch(e => console.warn('Audio play failed:', e));
+    console.log(`Playing ${level} alert sound: ${src}`);
+    return;
     }
     
     // Create oscillator for alert sound
@@ -203,24 +211,6 @@ async function playAlertSoundMaxVolume(level) {
     
   } catch (e) {
     console.error('Error playing alert sound:', e);
-    // Fallback to HTML5 Audio
-    playFallbackSound(level);
-  }
-}
-
-/**
- * Fallback sound using HTML5 Audio
- */
-function playFallbackSound(level) {
-  try {
-    alertAudio = new Audio();
-    // Use data URI for basic alert tone
-    alertAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJKVkpF9a3F/goKDgH18en6DioqGg4B+fX+ChYaHhYOBfnx+gYSHiIeEgYB+fH6Bg4aIh4WCgH5+f4GEhoaFg4F/fn5/gYOGhoWDgYB+fn+Bg4WGhYOBgH5+f4GDhYaFg4GAfn5/gYOFhoWDgYB+fn+Bg4WFhYOBgH5+f4GDhYWFg4GAfn5/gYOFhYWDgYB+fn+Bg4WFhYOBgH5+f4GDhYWFg4GAfn5/gYOFhYWDgYB+fn+Bg4WFhYOBgH5+f4GDhYWFg4GAfn5/gYOFhYWDgYB/f3+Bg4WFhYOBgH9/f4GDhYWFg4GAf39/gYOFhYWDgYB/f3+Bg4WFhYOBgH9/f4GDhYWFg4GAf39/gYOFhYWDgYB/f3+Bg4WFhYOBgH9/f4GDhYWFg4GAf39/gYOFhYWDgYB/f3+Bg4WFhYOBgA==';
-    alertAudio.loop = level === 'red' || level === 'tsunami';
-    alertAudio.volume = 1.0;
-    alertAudio.play().catch(e => console.warn('Audio play failed:', e));
-  } catch (e) {
-    console.warn('Fallback sound failed:', e);
   }
 }
 
@@ -541,20 +531,25 @@ export function getAlertHistory() {
 }
 
 /**
- * Send local notification
+ * Send local notification that wakes screen and shows on lock screen
  */
-export async function sendNotification(title, body, data = {}) {
+export async function sendNotification(title, body, data = {}, isAlert = false) {
   if (LocalNotifications) {
     try {
       await LocalNotifications.schedule({
         notifications: [{
-          id: Date.now(),
+          id: Math.floor(Date.now() / 1000),
           title,
           body,
           channelId: 'seismic_alerts',
-          ongoing: false,
-          autoCancel: true,
-          extra: data
+          ongoing: isAlert,
+          autoCancel: !isAlert,
+          sound: null,
+          extra: data,
+          // Mostrar en pantalla bloqueada
+          visibility: 1, // PUBLIC
+          // Prioridad máxima para despertar pantalla
+          importance: 5
         }]
       });
     } catch (e) {
@@ -578,8 +573,14 @@ export function showAreYouOKModal(magnitude, isTest = false) {
   testBanner.classList.toggle('hidden', !isTest);
   modal.classList.remove('hidden');
   
-  // Play softer notification sound
-  playAlertSoundMaxVolume('orange');
+  // Play 'estás bien' sound
+  try {
+    stopAlertSound();
+    alertAudio = new Audio('assets/estas_bien.wav');
+    alertAudio.volume = 1.0;
+    alertAudio.play().catch(e => console.warn('Are you ok sound failed:', e));
+  } catch(e) {}
+  
   
   if (!isTest) {
     // Start 3-minute countdown

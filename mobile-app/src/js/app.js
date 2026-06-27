@@ -143,22 +143,10 @@ async function showPermissionModal() {
       
       const results = await requestAllPermissions();
       
-      // Check if all granted
-      const allGranted = results.location && results.notification;
-      
-      if (allGranted) {
-        Storage.set('permissionsGranted', true);
-        modal.classList.add('hidden');
-        resolve(true);
-      } else {
-        btn.disabled = false;
-        btn.textContent = 'Reintentar';
-        // Still allow to continue
-        setTimeout(() => {
-          modal.classList.add('hidden');
-          resolve(false);
-        }, 2000);
-      }
+      // Siempre marcar como que ya se solicitaron para no volver a preguntar
+      Storage.set('permissionsGranted', true);
+      modal.classList.add('hidden');
+      resolve(results.location && results.notification);
     });
   });
 }
