@@ -82,6 +82,14 @@ async function initApp() {
       await showPermissionModal();
     }
     
+    // Solicitar desactivar la optimización de batería nativamente si está en modo nativo
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      try {
+        // Enviar al usuario a los ajustes de batería para que no restrinja la app
+        await window.Capacitor.Plugins.LocalNotifications.requestPermissions();
+      } catch (err) {}
+    }
+    
     // Setup event listeners
     setupEventListeners();
     
@@ -143,6 +151,13 @@ async function showPermissionModal() {
       btn.textContent = 'Solicitando permisos...';
       
       const results = await requestAllPermissions();
+      
+      // Intentar forzar el bypass de la batería nativamente
+      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        try {
+          await window.Capacitor.Plugins.NativeAudioHelper.requestBatteryBypass();
+        } catch (e) {}
+      }
       
       // Siempre marcar como que ya se solicitaron para no volver a preguntar
       Storage.set('permissionsGranted', true);
@@ -309,7 +324,10 @@ async function refreshEarthquakeData() {
     
   } catch (error) {
     console.error('Error fetching earthquake data:', error);
-    updateConnectionStatus(false);
+    // Solo marcar como desconectado si no tenemos ningún sismo en memoria previamente
+    if (earthquakes.length === 0) {
+      updateConnectionStatus(false);
+    }
   }
 }
 

@@ -460,7 +460,13 @@ function stopAlertEffects() {
     Torch.disable().catch(() => {});
   }
   
+  // Cancel alert state flag to break flash loops
+  currentAlert = null;
+  
   // Stop vibration
+  if (Haptics) {
+    Haptics.vibrate({ duration: 0 }).catch(() => {});
+  }
   if (navigator.vibrate) {
     navigator.vibrate(0);
   }
@@ -636,22 +642,29 @@ export function scheduleTestAlert(timeString) {
   const [hours, minutes] = timeString.split(':').map(Number);
   const now = new Date();
   const scheduledTime = new Date();
+  
+  // Forzar que el cálculo sea puramente en la zona horaria del dispositivo local
   scheduledTime.setHours(hours, minutes, 0, 0);
   
-  if (scheduledTime <= now) {
+  if (scheduledTime.getTime() <= now.getTime()) {
     scheduledTime.setDate(scheduledTime.getDate() + 1);
   }
   
   const delay = scheduledTime.getTime() - now.getTime();
   
-  console.log(`Test alert scheduled for ${scheduledTime.toLocaleTimeString()}`);
+  console.log(`Simulacro programado localmente para: ${scheduledTime.toString()} (dentro de ${Math.round(delay/1000)}s)`);
   
   Storage.set('scheduledTest', {
     time: timeString,
     nextRun: scheduledTime.getTime()
   });
   
-  setTimeout(() => {
+  // Limpiar cualquier timeout previo antes de programar
+  if (window.testAlertTimeout) {
+    clearTimeout(window.testAlertTimeout);
+  }
+  
+  window.testAlertTimeout = setTimeout(() => {
     const testData = {
       magnitude: 6.5,
       place: 'Prueba programada automatica',
@@ -662,7 +675,7 @@ export function scheduleTestAlert(timeString) {
     };
     showAlert('red', testData, true);
     
-    // Reschedule for next day
+    // Reprogramar para el día siguiente
     scheduleTestAlert(timeString);
   }, delay);
 }

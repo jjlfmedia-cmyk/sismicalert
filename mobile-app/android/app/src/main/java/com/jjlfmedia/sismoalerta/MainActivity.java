@@ -76,10 +76,31 @@ public class MainActivity extends BridgeActivity {
                         activity.wakeLock.release();
                     }
                     activity.wakeLock = pm.newWakeLock(
-                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
                         "SismoAlerta::WakelockTag"
                     );
                     activity.wakeLock.acquire(45000); // Expiración a los 45 seg
+                }
+                call.resolve();
+            } catch (Exception e) {
+                call.reject(e.getMessage());
+            }
+        }
+
+        @PluginMethod
+        public void requestBatteryBypass(PluginCall call) {
+            try {
+                Context context = getContext();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    android.content.Intent intent = new android.content.Intent();
+                    String packageName = context.getPackageName();
+                    PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                    if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                        intent.setAction(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                        intent.setData(android.net.Uri.parse("package:" + packageName));
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                    }
                 }
                 call.resolve();
             } catch (Exception e) {
