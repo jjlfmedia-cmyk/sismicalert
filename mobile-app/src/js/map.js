@@ -287,6 +287,22 @@ export function centerOnUser(lat, lon) {
 }
 
 /**
+ * Center map on a specific earthquake and open its popup
+ */
+export function centerOnEarthquake(lat, lon, zoom = 7) {
+  if (!map) return;
+  map.setView([lat, lon], zoom);
+  markersLayer.eachLayer(layer => {
+    if (layer.getLatLng) {
+      const pos = layer.getLatLng();
+      if (Math.abs(pos.lat - lat) < 0.02 && Math.abs(pos.lng - lon) < 0.02) {
+        setTimeout(() => layer.openPopup(), 350);
+      }
+    }
+  });
+}
+
+/**
  * Refresh map size
  */
 export function refreshMap() {

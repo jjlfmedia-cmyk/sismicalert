@@ -20,6 +20,7 @@ import {
   updateMapMarkers, 
   setUserLocation, 
   centerOnUser, 
+  centerOnEarthquake,
   refreshMap,
   simulateSeismicWaves,
   simulateRandomEarthquake
@@ -355,7 +356,7 @@ function updateDashboard() {
         : null;
       
       return `
-        <div class="quake-item">
+        <div class="quake-item" style="cursor:pointer;" data-lat="${eq.latitude}" data-lon="${eq.longitude}">
           <div class="quake-mag ${color}">${eq.magnitude.toFixed(1)}</div>
           <div class="quake-info">
             <div class="quake-place">${eq.place || 'Ubicacion desconocida'}</div>
@@ -365,9 +366,27 @@ function updateDashboard() {
               <span>${eq.source}</span>
             </div>
           </div>
+          <div style="font-size:10px;color:#a0aec0;margin-left:auto;padding-left:8px;">Ver en mapa &rsaquo;</div>
         </div>
       `;
     }).join('');
+
+    // Attach click listeners to navigate to map tab
+    recentList.querySelectorAll('.quake-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const lat = parseFloat(item.dataset.lat);
+        const lon = parseFloat(item.dataset.lon);
+        // Switch to map tab
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+        const mapBtn = document.querySelector('[data-tab="map"]');
+        const mapSection = document.getElementById('tab-map');
+        if (mapBtn) mapBtn.classList.add('active');
+        if (mapSection) mapSection.classList.add('active');
+        refreshMap();
+        centerOnEarthquake(lat, lon, 8);
+      });
+    });
   }
   
   // Update stats
@@ -442,14 +461,22 @@ function checkForAlerts(earthquakes) {
       // Show alert based on level
       if (level === 'red') {
         showAlert('red', alertData);
+        // Wake-up notification for locked screen
+        sendNotification(
+          'ALERTA SISMICA ROJA',
+          `M${eq.magnitude.toFixed(1)} - ${eq.place || 'Region desconocida'} - A ${Math.round(distance)} km`,
+          {}, true
+        );
+        // Auto-dismiss after 45 seconds
+        setTimeout(() => hideAlert(), 45000);
         
-        // Schedule "Are you OK?" check for major quakes
-        if (eq.magnitude >= 6 && distance < 300 && settings.autoRescue) {
+        // Schedule "Are you OK?" check for major quakes (5 min)
+        if (eq.magnitude >= 5.5 && distance < 300 && settings.autoRescue) {
           setTimeout(() => {
             if (!isRescueModeActive()) {
               showAreYouOKModal(eq.magnitude);
             }
-          }, 8 * 60 * 1000); // 8 minutes
+          }, 5 * 60 * 1000); // 5 minutos
         }
         
         // Check for tsunami risk (coastal + large magnitude + shallow)
@@ -466,6 +493,14 @@ function checkForAlerts(earthquakes) {
         
       } else if (level === 'orange') {
         showAlert('orange', alertData);
+        // Wake-up notification for locked screen
+        sendNotification(
+          'ALERTA SISMICA NARANJA',
+          `M${eq.magnitude.toFixed(1)} - ${eq.place || 'Region desconocida'} - A ${Math.round(distance)} km`,
+          {}, true
+        );
+        // Auto-dismiss after 45 seconds
+        setTimeout(() => hideAlert(), 45000);
       } else if (level === 'yellow') {
         sendNotification(
           'Aviso Sismico',
