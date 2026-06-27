@@ -516,31 +516,50 @@ function startAccelerometerMonitoring() {
   
   let highAccelCount = 0;
   const THRESHOLD = 3.5;
-  const DURATION_THRESHOLD = 5;
+  const DURATION_THRESHOLD = 8; // Aumentado para evitar falsos positivos
   
   window.addEventListener('devicemotion', (event) => {
-    const acc = event.accelerationIncludingGravity;
-    if (!acc) return;
+    // Intentar usar aceleración pura (sin gravedad) primero
+    let acc = event.acceleration;
+    let total = 0;
     
-    const total = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-    const deviation = Math.abs(total - 9.81);
-    
-    if (deviation > THRESHOLD) {
-      highAccelCount++;
+    if (acc && acc.x !== null && acc.y !== null && acc.z !== null) {
+      total = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+      // Con aceleración pura, el total es directamente la fuerza de vibración
+      if (total === 0) return;
       
-      if (highAccelCount >= DURATION_THRESHOLD) {
-        console.log('Seismic motion detected via accelerometer!');
-        handleLocalSeismicDetection(deviation);
-        highAccelCount = 0;
+      if (total > THRESHOLD) {
+        highAccelCount++;
+      } else {
+        highAccelCount = Math.max(0, highAccelCount - 1);
       }
     } else {
-      highAccelCount = Math.max(0, highAccelCount - 1);
+      // Fallback a aceleración con gravedad
+      acc = event.accelerationIncludingGravity;
+      if (!acc || acc.x === null || acc.y === null || acc.z === null) return;
+      
+      total = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+      
+      // Si total es exactamente 0 o muy cercano a 0 (ej. en navegadores de PC sin sensor)
+      if (total < 1.0) return;
+      
+      const deviation = Math.abs(total - 9.81);
+      if (deviation > THRESHOLD) {
+        highAccelCount++;
+      } else {
+        highAccelCount = Math.max(0, highAccelCount - 1);
+      }
+    }
+    
+    if (highAccelCount >= DURATION_THRESHOLD) {
+      console.log('Seismic motion detected via accelerometer!');
+      handleLocalSeismicDetection(total);
+      highAccelCount = 0;
     }
   });
   
   console.log('Accelerometer monitoring started');
 }
-
 /**
  * Handle local seismic detection
  */
