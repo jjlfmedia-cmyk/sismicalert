@@ -1,6 +1,5 @@
 // SismoAlerta America - Alerts Module with Native Audio Control
 import { sleep, VibrationPatterns, Storage, formatDateTime, getCountryFromCoords } from './utils.js';
-import { Capacitor } from '@capacitor/core';
 
 // Alert state
 let currentAlert = null;
@@ -148,9 +147,9 @@ async function playAlertSoundMaxVolume(level) {
     stopAlertSound();
     
     // Invocar el helper nativo para forzar volumen e ignorar silencio en Android
-    if (Capacitor.isNativePlatform()) {
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
       try {
-        await Capacitor.Plugins.NativeAudioHelper.forceMaxVolume();
+        await window.Capacitor.Plugins.NativeAudioHelper.forceMaxVolume();
       } catch (err) {
         console.warn('Native override silence error:', err);
       }
@@ -372,9 +371,9 @@ export async function showAlert(level, data, isTest = false) {
   overlay.classList.remove('hidden');
   
   // Despertar la pantalla de bloqueo nativamente en Android
-  if (Capacitor.isNativePlatform()) {
+  if (window.Capacitor && window.Capacitor.isNativePlatform()) {
     try {
-      await Capacitor.Plugins.NativeAudioHelper.acquireWakeLock();
+      await window.Capacitor.Plugins.NativeAudioHelper.acquireWakeLock();
     } catch(err) {}
   }
   
