@@ -1,5 +1,6 @@
 // SismoAlerta America - Main App Module
 import { fetchAllEarthquakes, filterByPeriod, calculateStats } from './api.js';
+import { Capacitor } from '@capacitor/core';
 import { 
   initAlertPlugins,
   requestAllPermissions,
@@ -153,9 +154,9 @@ async function showPermissionModal() {
       const results = await requestAllPermissions();
       
       // Intentar forzar el bypass de la batería nativamente
-      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      if (Capacitor.isNativePlatform()) {
         try {
-          await window.Capacitor.Plugins.NativeAudioHelper.requestBatteryBypass();
+          await Capacitor.Plugins.NativeAudioHelper.requestBatteryBypass();
         } catch (e) {}
       }
       
